@@ -95,9 +95,11 @@ resource "aws_eip" "meal_tracker_nat_eip" {
 
 resource "aws_nat_gateway" "meal_tracker_nat_gw" {
   count         = local.create_nat ? 1 : 0
-  allocation_id = aws_eip.meal_tracker_nat_eip.id
-  subnet_id     = element([for s in aws_subnet.meal_tracker_subnet : s.id if var.subnets[lookup(aws_subnet.meal_tracker_subnet.*.id, s.id)].public], count.index)
-  depends_on    = [aws_internet_gateway.meal_tracker_igw, aws_subnet.meal_tracker_subnet, aws_eip.meal_tracker_nat_eip]
+  allocation_id = aws_eip.meal_tracker_nat_eip[0].id
+  subnet_id = aws_subnet.meal_tracker_subnet[
+    index(var.subnets, one([for s in var.subnets : s if s.public]))
+  ].id
+  depends_on = [aws_internet_gateway.meal_tracker_igw, aws_subnet.meal_tracker_subnet, aws_eip.meal_tracker_nat_eip]
 
   tags = {
     Name = "meal_tracker_nat_gw_${count.index + 1}"
@@ -122,24 +124,28 @@ resource "aws_security_group" "web_sg" {
   description = "Allow HTTP and HTTPS traffic"
   vpc_id      = aws_vpc.meal_tracker_vpc.id
 
-  ingress = [{
-    cidr_blocks = ["0.0.0.0/0"]
-    protocol    = "tcp"
+  ingress {
+    description = "Allow HTTP"
     from_port   = 80
     to_port     = 80
-    }, {
-    cidr_blocks = ["0.0.0.0/0"]
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow HTTPS"
     from_port   = 443
     to_port     = 443
-  }]
-
-  egress = [{
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    protocol    = "-1"
+  }
+
+  egress {
     from_port   = 0
     to_port     = 0
-  }]
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
 }
 
@@ -148,19 +154,19 @@ resource "aws_security_group" "app_sg" {
   description = "Allow traffic from web servers"
   vpc_id      = aws_vpc.meal_tracker_vpc.id
 
-  ingress = [{
+  ingress {
     cidr_blocks = [aws_security_group.web_sg.id]
     protocol    = "tcp"
     from_port   = 8080
     to_port     = 8080
-  }]
+  }
 
-  egress = [{
+  egress {
     cidr_blocks = ["0.0.0.0/0"]
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
-  }]
+  }
 
 }
 
@@ -169,18 +175,18 @@ resource "aws_security_group" "db_sg" {
   description = "Allow traffic from app servers"
   vpc_id      = aws_vpc.meal_tracker_vpc.id
 
-  ingress = [{
+  ingress {
     cidr_blocks = [aws_security_group.app_sg.id]
     protocol    = "tcp"
     from_port   = 5432
     to_port     = 5432
-  }]
+  }
 
-  egress = [{
+  egress {
     cidr_blocks = ["0.0.0.0/0"]
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
-  }]
+  }
 
 }
