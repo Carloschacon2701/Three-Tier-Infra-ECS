@@ -71,9 +71,6 @@ resource "aws_route_table" "meal_tracker_rt_private" {
 
   depends_on = [aws_subnet.meal_tracker_subnet]
 
-  lifecycle {
-    prevent_destroy = true
-  }
 
 }
 
@@ -147,6 +144,8 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  depends_on = [aws_vpc.meal_tracker_vpc]
+
 }
 
 resource "aws_security_group" "app_sg" {
@@ -155,10 +154,10 @@ resource "aws_security_group" "app_sg" {
   vpc_id      = aws_vpc.meal_tracker_vpc.id
 
   ingress {
-    cidr_blocks = [aws_security_group.web_sg.id]
-    protocol    = "tcp"
-    from_port   = 8080
-    to_port     = 8080
+    security_groups = [aws_security_group.web_sg.id]
+    protocol        = "tcp"
+    from_port       = 8080
+    to_port         = 8080
   }
 
   egress {
@@ -167,6 +166,8 @@ resource "aws_security_group" "app_sg" {
     from_port   = 0
     to_port     = 0
   }
+
+  depends_on = [aws_vpc.meal_tracker_vpc, aws_security_group.web_sg]
 
 }
 
@@ -176,10 +177,10 @@ resource "aws_security_group" "db_sg" {
   vpc_id      = aws_vpc.meal_tracker_vpc.id
 
   ingress {
-    cidr_blocks = [aws_security_group.app_sg.id]
-    protocol    = "tcp"
-    from_port   = 5432
-    to_port     = 5432
+    security_groups = [aws_security_group.app_sg.id]
+    protocol        = "tcp"
+    from_port       = 5432
+    to_port         = 5432
   }
 
   egress {
@@ -188,5 +189,7 @@ resource "aws_security_group" "db_sg" {
     from_port   = 0
     to_port     = 0
   }
+
+  depends_on = [aws_vpc.meal_tracker_vpc, aws_security_group.app_sg]
 
 }
