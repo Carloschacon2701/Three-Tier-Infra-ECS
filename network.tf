@@ -23,6 +23,7 @@ resource "aws_subnet" "meal_tracker_subnet" {
 
   tags = {
     Name = "meal_tracker_subnet_${var.subnets[count.index].public ? "public" : "private"}_${count.index + 1}"
+    Type = var.subnets[count.index].type
   }
 
   lifecycle {

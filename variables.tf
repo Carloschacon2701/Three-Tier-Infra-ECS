@@ -5,9 +5,14 @@ variable "subnets" {
     availability_zone = string
     public            = bool
     require_nat       = bool
+    type              = string
 
   }))
 
+  validation {
+    condition     = alltrue([for s in var.subnets : s.type == "app" || s.type == "web" || s.type == "db"])
+    error_message = "Each subnet type must be one of 'app', 'web', or 'db'."
+  }
 
   validation {
     condition     = length(var.subnets) > 0
