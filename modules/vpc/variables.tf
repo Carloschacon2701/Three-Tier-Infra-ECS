@@ -1,3 +1,10 @@
+variable "default_tags" {
+  description = "A map of tags to add to all resources"
+  type        = map(string)
+  default     = {}
+
+}
+
 variable "subnets" {
   description = "List of subnet"
   type = list(object({

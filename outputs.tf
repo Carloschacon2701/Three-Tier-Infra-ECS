@@ -1,36 +1,53 @@
 output "vpc_id" {
   description = "The ID of the VPC."
-  value       = aws_vpc.meal_tracker_vpc.id
+  value       = module.vpc.vpc_id
 
 }
 
 output "public_subnet_ids" {
   description = "List of public subnet IDs."
-  value       = [for subnet in aws_subnet.meal_tracker_subnet : subnet.id if subnet.map_public_ip_on_launch]
+  value       = module.vpc.public_subnet_ids
 
 }
 
 output "private_subnet_ids" {
   description = "List of private subnet IDs."
-  value       = [for subnet in aws_subnet.meal_tracker_subnet : subnet.id if !subnet.map_public_ip_on_launch]
+  value       = module.vpc.private_subnet_ids
 
 }
 
 output "app_security_group_id" {
   description = "The ID of the application security group."
-  value       = aws_security_group.app_sg.id
+  value       = module.vpc.app_security_group_id
 
 }
 
 output "db_security_group_id" {
   description = "The ID of the database security group."
-  value       = aws_security_group.db_sg.id
+  value       = module.vpc.db_security_group_id
 
 }
 
 output "web_security_group_id" {
   description = "The ID of the web security group."
-  value       = aws_security_group.web_sg.id
+  value       = module.vpc.web_security_group_id
 
 }
 
+output "db_instance_endpoint" {
+  description = "The endpoint of the RDS instance."
+  value       = module.db.db_instance_endpoint
+
+}
+
+output "db_instance_port" {
+  description = "The port of the RDS instance."
+  value       = module.db.db_instance_port
+
+}
+
+output "db_instance_identifier" {
+  description = "The identifier of the RDS instance."
+  value       = module.db.db_instance_identifier
+
+}
