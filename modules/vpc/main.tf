@@ -106,10 +106,8 @@ resource "aws_eip" "nat_eip" {
 resource "aws_nat_gateway" "nat_gw" {
   count         = local.create_nat ? 1 : 0
   allocation_id = aws_eip.nat_eip[0].id
-  subnet_id = aws_subnet.subnet[
-    index(var.subnets, one([for s in var.subnets : s if s.public]))
-  ].id
-  depends_on = [aws_internet_gateway.igw, aws_subnet.subnet, aws_eip.nat_eip]
+  subnet_id     = aws_subnet.subnet[index([for s in var.subnets : s.public], true)].id
+  depends_on    = [aws_internet_gateway.igw, aws_subnet.subnet, aws_eip.nat_eip]
 
   tags = {
     Name = "nat_gw_${count.index + 1}"
