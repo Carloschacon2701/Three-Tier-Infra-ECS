@@ -91,12 +91,23 @@ module "db" {
 
 }
 
-module "ecs_cluster" {
-  source = "terraform-aws-modules/ecs/aws"
+module "ecs" {
+  source  = "terraform-aws-modules/ecs/aws"
+  version = "6.3.0"
 
+  # Cluster Configuration
   cluster_name = "meal-tracker-cluster"
 
-  # Capacity provider
+  cluster_configuration = {
+    execute_command_configuration = {
+      logging = "OVERRIDE"
+      log_configuration = {
+        cloud_watch_log_group_name = "/aws/ecs/meal_tracker"
+      }
+    }
+  }
+
+  # Capacity Providers
   default_capacity_provider_strategy = {
     FARGATE = {
       weight = 50
@@ -107,29 +118,128 @@ module "ecs_cluster" {
     }
   }
 
-  # services = {
-  #   melat_tracker_backend = {
-  #     cpu    = 1024
-  #     memory = 4096
+  # Services with Task Definitions
+  services = {
+    # Service 2: Backend API Service
+    backend_api = {
+      # Task Definition Configuration
+      cpu    = 2048
+      memory = 4096
 
-  #     ecs-sample = {
-  #       cpu       = 512
-  #       memory    = 1024
-  #       essential = true
-  #       image     = "public.ecr.aws/aws-containers/ecsdemo-frontend:776fd50"
-  #       portMappings = [
-  #         {
-  #           name          = "ecs-sample"
-  #           containerPort = 80
-  #           protocol      = "tcp"
-  #         }
-  #       ]
+      container_definitions = {
+        api = {
+          cpu       = 1024
+          memory    = 2048
+          essential = true
+          image     = var.app_image
 
-  #       readonlyRootFilesystem = false
-  #       memoryReservation      = 100
-  #     }
-  #   }
-  # }
+          port_mappings = [
+            {
+              name          = "api"
+              containerPort = 8080
+              protocol      = "tcp"
+            }
+          ]
 
+          # Environment variables
+          environment = [
+            {
+              name  = "DB_HOST"
+              value = "rds.amazonaws.com"
+            },
+            {
+              name  = "API_PORT"
+              value = "8080"
+            }
+          ]
+
+          # Secrets from AWS Systems Manager
+          secrets = [
+            {
+              name      = "DB_PASSWORD"
+              valueFrom = "arn:aws:ssm:us-west-2:123456789012:parameter/prod/db/password"
+            }
+          ]
+
+          # Health check
+          health_check = {
+            command      = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+            interval     = 30
+            timeout      = 5
+            retries      = 3
+            start_period = 60
+          }
+
+          # Linux parameters
+          linux_parameters = {
+            init_process_enabled = true
+          }
+
+          enable_cloudwatch_logging = true
+        }
+
+        # # Database migration sidecar (runs once)
+        # db_migrate = {
+        #   cpu       = 512
+        #   memory    = 1024
+        #   essential = false
+        #   image     = "my-company/db-migrations:v1.2.3"
+
+        #   depends_on = [
+        #     {
+        #       containerName = "api"
+        #       condition     = "START"
+        #     }
+        #   ]
+        # }
+      }
+
+      # Service Configuration
+      desired_count = 1
+      launch_type   = "FARGATE"
+
+      # Network Configuration
+      subnet_ids       = module.vpc.app_subnets_ids
+      assign_public_ip = false
+
+      # Container mount points for the volume
+      # container_definitions = {
+      #   api = {
+      #     # ... other container config ...
+      #     mount_points = [
+      #       {
+      #         sourceVolume  = "shared-data"
+      #         containerPath = "/app/shared"
+      #         readOnly      = false
+      #       }
+      #     ]
+      #   }
+      # }
+
+      # Placement constraints
+      placement_constraints = {
+        spread_az = {
+          type  = "spread"
+          field = "attribute:ecs.availability-zone"
+        }
+      }
+
+      # Custom IAM permissions for task role
+      tasks_iam_role_statements = [
+        {
+          sid    = "AllowS3Access"
+          effect = "Allow"
+          actions = [
+            "s3:GetObject",
+            "s3:PutObject"
+          ]
+          resources = [
+            "arn:aws:s3:::my-app-bucket/*"
+          ]
+        }
+      ]
+    }
+
+  }
 
 }

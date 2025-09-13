@@ -16,6 +16,12 @@ output "private_subnet_ids" {
 
 }
 
+output "app_subnets_ids" {
+  description = "List of application subnet IDs."
+  value       = [for subnet in aws_subnet.subnet : subnet.id if subnet.tags["Type"] == "app"]
+
+}
+
 output "app_security_group_id" {
   description = "The ID of the application security group."
   value       = aws_security_group.app_sg.id
