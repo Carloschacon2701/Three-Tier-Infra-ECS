@@ -1,4 +1,3 @@
-
 provider "aws" {
   region = "us-east-1"
   default_tags {
@@ -89,6 +88,8 @@ module "db" {
   backup_window           = "03:00-06:00"
   backup_retention_period = 0
 
+
+
 }
 
 module "ecs" {
@@ -123,8 +124,9 @@ module "ecs" {
     # Service 2: Backend API Service
     backend_api = {
       # Task Definition Configuration
-      cpu    = 2048
-      memory = 4096
+      cpu                = 1024
+      memory             = 2048
+      security_group_ids = [module.vpc.app_security_group_id]
 
       container_definitions = {
         api = {
@@ -133,31 +135,31 @@ module "ecs" {
           essential = true
           image     = var.app_image
 
-          port_mappings = [
+          portMappings = [
             {
               name          = "api"
               containerPort = 8080
               protocol      = "tcp"
+
             }
           ]
 
           # Environment variables
-          environment = [
+          environment = concat([for key, value in var.env_variables : {
+            name  = key
+            value = value
+            }], [
             {
-              name  = "DB_HOST"
-              value = "rds.amazonaws.com"
-            },
-            {
-              name  = "API_PORT"
-              value = "8080"
+              name  = "DB_URL"
+              value = "jdbc:postgresql://${module.db.db_instance_endpoint}:${module.db.db_instance_port}/${module.db.db_instance_name}"
             }
-          ]
+          ])
 
           # Secrets from AWS Systems Manager
           secrets = [
             {
               name      = "DB_PASSWORD"
-              valueFrom = "arn:aws:ssm:us-west-2:123456789012:parameter/prod/db/password"
+              valueFrom = module.db.db_instance_master_user_secret_arn
             }
           ]
 
@@ -197,6 +199,7 @@ module "ecs" {
       # Service Configuration
       desired_count = 1
       launch_type   = "FARGATE"
+      iam_role_arn  = var.task_exec_iam_role_arn
 
       # Network Configuration
       subnet_ids       = module.vpc.app_subnets_ids
@@ -217,27 +220,10 @@ module "ecs" {
       # }
 
       # Placement constraints
-      placement_constraints = {
-        spread_az = {
-          type  = "spread"
-          field = "attribute:ecs.availability-zone"
-        }
-      }
 
+      task_exec_iam_role_arn = var.task_exec_iam_role_arn
       # Custom IAM permissions for task role
-      tasks_iam_role_statements = [
-        {
-          sid    = "AllowS3Access"
-          effect = "Allow"
-          actions = [
-            "s3:GetObject",
-            "s3:PutObject"
-          ]
-          resources = [
-            "arn:aws:s3:::my-app-bucket/*"
-          ]
-        }
-      ]
+      tasks_iam_role_arn = var.tasks_iam_role_arn
     }
 
   }

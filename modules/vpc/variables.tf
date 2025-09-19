@@ -35,7 +35,5 @@ variable "subnets" {
     condition     = alltrue([for s in var.subnets : can(cidrhost(s.cidr_block, 0))])
     error_message = "All subnets must have a valid CIDR block."
   }
-
-
-
 }
+

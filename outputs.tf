@@ -51,3 +51,9 @@ output "db_instance_identifier" {
   value       = module.db.db_instance_identifier
 
 }
+
+output "DB_url" {
+
+  description = "The URL of the database."
+  value       = "jdbc:postgresql://${module.db.db_instance_endpoint}:${module.db.db_instance_port}/${module.db.db_instance_name}"
+}
