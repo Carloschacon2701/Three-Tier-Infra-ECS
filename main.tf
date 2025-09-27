@@ -152,16 +152,12 @@ module "ecs" {
             {
               name  = "DB_URL"
               value = "jdbc:postgresql://${module.db.db_instance_endpoint}:${module.db.db_instance_port}/${module.db.db_instance_name}"
+            },
+            {
+              name  = "DB_SECRET_ARN"
+              value = module.db.db_instance_master_user_secret_arn
             }
           ])
-
-          # Secrets from AWS Systems Manager
-          secrets = [
-            {
-              name      = "DB_PASSWORD"
-              valueFrom = module.db.db_instance_master_user_secret_arn
-            }
-          ]
 
           # Health check
           health_check = {
