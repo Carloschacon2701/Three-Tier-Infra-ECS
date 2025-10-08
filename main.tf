@@ -154,8 +154,8 @@ module "ecs" {
               value = "jdbc:postgresql://${module.db.db_instance_endpoint}:${module.db.db_instance_port}/${module.db.db_instance_name}"
             },
             {
-              name  = "DB_SECRET_ARN"
-              value = module.db.db_instance_master_user_secret_arn
+              name  = "DB_SECRET_NAME"
+              value = regex("^arn:aws:secretsmanager:[^:]+:[^:]+:secret:([^!]+!.*)-[[:alnum:]]+$", module.db.db_instance_master_user_secret_arn)[0]
             }
           ])
 
