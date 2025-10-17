@@ -40,3 +40,14 @@ variable "tasks_iam_role_arn" {
     error_message = "The tasks_iam_role_arn cannot be empty."
   }
 }
+
+variable "db_password" {
+  description = "Password for the database master user"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = length(var.db_password) >= 8
+    error_message = "The db_password must be at least 8 characters long."
+  }
+}

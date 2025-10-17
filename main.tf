@@ -88,7 +88,8 @@ module "db" {
   backup_window           = "03:00-06:00"
   backup_retention_period = 0
 
-
+  manage_master_user_password = false
+  password                    = var.db_password
 
 }
 
@@ -151,11 +152,15 @@ module "ecs" {
             }], [
             {
               name  = "DB_URL"
-              value = "jdbc:postgresql://${module.db.db_instance_endpoint}:${module.db.db_instance_port}/${module.db.db_instance_name}"
+              value = "jdbc:postgresql://${module.db.db_instance_endpoint}/${module.db.db_instance_name}"
             },
+            # {
+            #   name  = "DB_SECRET_NAME"
+            #   value = regex("^arn:aws:secretsmanager:[^:]+:[^:]+:secret:([^!]+!.*)-[[:alnum:]]+$", module.db.db_instance_master_user_secret_arn)[0]
+            # },
             {
-              name  = "DB_SECRET_NAME"
-              value = regex("^arn:aws:secretsmanager:[^:]+:[^:]+:secret:([^!]+!.*)-[[:alnum:]]+$", module.db.db_instance_master_user_secret_arn)[0]
+              name  = "DB_PASSWORD"
+              value = var.db_password
             }
           ])
 
