@@ -45,14 +45,14 @@ module "vpc" {
       cidr_block        = "10.0.20.0/24"
       availability_zone = "us-east-1a"
       public            = false
-      require_nat       = true
+      require_nat       = false
       type              = "db"
     },
     {
       cidr_block        = "10.0.40.0/24"
       availability_zone = "us-east-1b"
       public            = false
-      require_nat       = true
+      require_nat       = false
       type              = "db"
     }
   ]
@@ -68,6 +68,7 @@ module "db" {
 
   create_db_option_group    = false
   create_db_parameter_group = false
+
 
   engine               = "postgres"
   engine_version       = "14"
@@ -93,11 +94,92 @@ module "db" {
 
 }
 
+############################################
+# ALB MODULE (HTTP ONLY)
+############################################
+module "alb" {
+  source = "terraform-aws-modules/alb/aws"
+
+  name    = "meal-tracker-alb"
+  vpc_id  = module.vpc.vpc_id
+  subnets = module.vpc.public_subnet_ids
+
+  # Security Group
+  security_group_ingress_rules = {
+    all_http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+
+  security_group_egress_rules = {
+    all = {
+      ip_protocol = "-1"
+      cidr_ipv4   = "10.0.0.0/16"
+    }
+  }
+
+  # Listener: HTTP only
+  listeners = {
+    http = {
+      port     = 80
+      protocol = "HTTP"
+      forward = {
+        target_group_key = "backend_api_tg"
+      }
+    }
+  }
+
+  enable_deletion_protection = false
+
+  # Target Group for ECS Fargate Tasks
+  target_groups = {
+    backend_api_tg = {
+      name_prefix       = "api-"
+      protocol          = "HTTP"
+      port              = 80
+      target_type       = "ip"
+      create_attachment = false
+
+      health_check = {
+        path                = "/health/"
+        interval            = 30
+        timeout             = 5
+        healthy_threshold   = 3
+        unhealthy_threshold = 3
+        matcher             = "200"
+      }
+    }
+  }
+
+  tags = {
+    Environment = "Development"
+    Project     = "MealTracker"
+  }
+}
+
+############################################
+# SECURITY GROUP RULE - ALB -> ECS SERVICE
+############################################
+resource "aws_security_group_rule" "alb_to_app" {
+  type                     = "ingress"
+  from_port                = 8080
+  to_port                  = 8080
+  protocol                 = "tcp"
+  security_group_id        = module.vpc.app_security_group_id
+  source_security_group_id = module.alb.security_group_id
+}
+
+############################################
+# ECS MODULE
+############################################
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "6.3.0"
 
-  # Cluster Configuration
   cluster_name = "meal-tracker-cluster"
 
   cluster_configuration = {
@@ -109,7 +191,6 @@ module "ecs" {
     }
   }
 
-  # Capacity Providers
   default_capacity_provider_strategy = {
     FARGATE = {
       weight = 50
@@ -120,13 +201,15 @@ module "ecs" {
     }
   }
 
-  # Services with Task Definitions
   services = {
-    # Service 2: Backend API Service
     backend_api = {
-      # Task Definition Configuration
       cpu                = 1024
       memory             = 2048
+      desired_count      = 1
+      launch_type        = "FARGATE"
+      iam_role_arn       = var.task_exec_iam_role_arn
+      subnet_ids         = module.vpc.app_subnets_ids
+      assign_public_ip   = false
       security_group_ids = [module.vpc.app_security_group_id]
 
       container_definitions = {
@@ -141,92 +224,54 @@ module "ecs" {
               name          = "api"
               containerPort = 8080
               protocol      = "tcp"
-
             }
           ]
 
-          # Environment variables
-          environment = concat([for key, value in var.env_variables : {
-            name  = key
-            value = value
-            }], [
-            {
-              name  = "DB_URL"
-              value = "jdbc:postgresql://${module.db.db_instance_endpoint}/${module.db.db_instance_name}"
-            },
-            # {
-            #   name  = "DB_SECRET_NAME"
-            #   value = regex("^arn:aws:secretsmanager:[^:]+:[^:]+:secret:([^!]+!.*)-[[:alnum:]]+$", module.db.db_instance_master_user_secret_arn)[0]
-            # },
-            {
-              name  = "DB_PASSWORD"
-              value = var.db_password
-            }
-          ])
+          environment = concat(
+            [for key, value in var.env_variables : {
+              name  = key
+              value = value
+            }],
+            [
+              {
+                name  = "DB_URL"
+                value = "jdbc:postgresql://${module.db.db_instance_endpoint}/${module.db.db_instance_name}"
+              },
+              {
+                name  = "DB_PASSWORD"
+                value = var.db_password
+              }
+            ]
+          )
 
-          # Health check
           health_check = {
-            command      = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+            command      = ["CMD-SHELL", "curl -f http://localhost:8080/health/ || exit 1"]
             interval     = 30
             timeout      = 5
             retries      = 3
             start_period = 60
           }
 
-          # Linux parameters
           linux_parameters = {
             init_process_enabled = true
           }
 
           enable_cloudwatch_logging = true
         }
-
-        # # Database migration sidecar (runs once)
-        # db_migrate = {
-        #   cpu       = 512
-        #   memory    = 1024
-        #   essential = false
-        #   image     = "my-company/db-migrations:v1.2.3"
-
-        #   depends_on = [
-        #     {
-        #       containerName = "api"
-        #       condition     = "START"
-        #     }
-        #   ]
-        # }
       }
 
-      # Service Configuration
-      desired_count = 1
-      launch_type   = "FARGATE"
-      iam_role_arn  = var.task_exec_iam_role_arn
-
-      # Network Configuration
-      subnet_ids       = module.vpc.app_subnets_ids
-      assign_public_ip = false
-
-      # Container mount points for the volume
-      # container_definitions = {
-      #   api = {
-      #     # ... other container config ...
-      #     mount_points = [
-      #       {
-      #         sourceVolume  = "shared-data"
-      #         containerPath = "/app/shared"
-      #         readOnly      = false
-      #       }
-      #     ]
-      #   }
-      # }
-
-      # Placement constraints
+      load_balancer = {
+        backend_api_tg = {
+          target_group_arn = module.alb.target_groups["backend_api_tg"].arn
+          container_name   = "api"
+          container_port   = 8080
+        }
+      }
 
       task_exec_iam_role_arn = var.task_exec_iam_role_arn
-      # Custom IAM permissions for task role
-      tasks_iam_role_arn = var.tasks_iam_role_arn
+      tasks_iam_role_arn     = var.tasks_iam_role_arn
     }
-
   }
 
+  depends_on = [module.alb]
 }
