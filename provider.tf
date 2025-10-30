@@ -13,8 +13,7 @@ provider "aws" {
   default_tags {
     tags = {
       Environment = "dev"
-      owner       = "carlos"
-      Project     = "meal_tracker"
+      Project     = "${var.project_name}"
     }
   }
 }

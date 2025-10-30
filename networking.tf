@@ -56,7 +56,7 @@ module "vpc" {
 module "alb" {
   source = "terraform-aws-modules/alb/aws"
 
-  name    = "meal-tracker-alb"
+  name    = "${var.project_name}-alb"
   vpc_id  = module.vpc.vpc_id
   subnets = module.vpc.public_subnet_ids
 
@@ -113,7 +113,7 @@ module "alb" {
 
   tags = {
     Environment = "Development"
-    Project     = "MealTracker"
+    Project     = "${var.project_name}"
   }
 }
 

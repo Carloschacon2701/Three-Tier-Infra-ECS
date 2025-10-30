@@ -5,13 +5,13 @@ module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "6.3.0"
 
-  cluster_name = "meal-tracker-cluster"
+  cluster_name = "${var.project_name}-cluster"
 
   cluster_configuration = {
     execute_command_configuration = {
       logging = "OVERRIDE"
       log_configuration = {
-        cloud_watch_log_group_name = "/aws/ecs/meal_tracker"
+        cloud_watch_log_group_name = "/aws/ecs/${var.project_name}"
       }
     }
   }
@@ -60,11 +60,11 @@ module "ecs" {
             [
               {
                 name  = "DB_URL"
-                value = "jdbc:postgresql://${module.db.db_instance_endpoint}/${module.db.db_instance_name}"
+                value = "jdbc:postgresql://${module.db.db_instance_endpoint}/${var.rds_default_db_name}"
               },
               {
                 name  = "DB_PASSWORD"
-                value = var.db_password
+                value = var.rds_credentials.password
               }
             ]
           )
