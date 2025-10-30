@@ -1,4 +1,20 @@
 ############################################
+# IAM POLICY FOR BACKEND COGNITO ACCESS
+############################################
+# data "aws_iam_role" "ecs_task_execution_role" {
+#   name = var.task_exec_iam_role_arn
+# }
+
+data "aws_iam_role" "ecs_task_execution_role" {
+  name = var.task_exec_iam_role_name
+}
+
+data "aws_iam_role" "ecs_tasks_role" {
+  name = var.tasks_iam_role_name
+}
+
+
+############################################
 # ECS MODULE
 ############################################
 module "ecs" {
@@ -32,7 +48,7 @@ module "ecs" {
       memory             = 2048
       desired_count      = 1
       launch_type        = "FARGATE"
-      iam_role_arn       = var.task_exec_iam_role_arn
+      iam_role_arn       = data.aws_iam_role.ecs_task_execution_role.arn
       subnet_ids         = module.vpc.app_subnets_ids
       assign_public_ip   = false
       security_group_ids = [module.vpc.app_security_group_id]
@@ -93,8 +109,11 @@ module "ecs" {
         }
       }
 
-      task_exec_iam_role_arn = var.task_exec_iam_role_arn
-      tasks_iam_role_arn     = var.tasks_iam_role_arn
+      task_exec_iam_role_arn = data.aws_iam_role.ecs_task_execution_role.arn
+      tasks_iam_role_arn     = data.aws_iam_role.ecs_tasks_role.arn
+
+      create_task_exec_iam_role = false
+      create_tasks_iam_role     = false
     }
   }
 

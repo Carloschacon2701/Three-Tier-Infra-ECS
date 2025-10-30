@@ -31,25 +31,25 @@ variable "env_variables" {
 #####################################
 # IAM ROLES
 #####################################
-variable "task_exec_iam_role_arn" {
-  description = "ARN of the IAM role for ECS task execution"
+variable "task_exec_iam_role_name" {
+  description = "name of the IAM role for ECS task execution"
   type        = string
   default     = ""
 
   validation {
-    condition     = length(var.task_exec_iam_role_arn) > 0
-    error_message = "The task_exec_iam_role_arn cannot be empty."
+    condition     = length(var.task_exec_iam_role_name) > 0
+    error_message = "The task_exec_iam_role_name cannot be empty."
   }
 }
 
-variable "tasks_iam_role_arn" {
-  description = "ARN of the IAM role for ECS tasks"
+variable "tasks_iam_role_name" {
+  description = "name of the IAM role for ECS tasks"
   type        = string
   default     = ""
 
   validation {
-    condition     = length(var.tasks_iam_role_arn) > 0
-    error_message = "The tasks_iam_role_arn cannot be empty."
+    condition     = length(var.tasks_iam_role_name) > 0
+    error_message = "The tasks_iam_role_name cannot be empty."
   }
 }
 
