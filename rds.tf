@@ -2,39 +2,6 @@
 # RDS MODULE
 ############################################
 
-# module "db_aurora" {
-#   source = "terraform-aws-modules/rds-aurora/aws"
-
-#   name = "${var.project_name}-db-aurora"
-
-#   engine         = var.rds_engine.engine
-#   engine_version = var.rds_engine.engine_version
-#   instance_class = var.rds_instance_class
-
-#   vpc_id                 = module.vpc.vpc_id
-#   apply_immediately      = true
-#   create_db_subnet_group = false
-#   create_security_group  = false
-
-#   db_subnet_group_name        = module.vpc.subnet_group_db
-#   vpc_security_group_ids      = [module.vpc.db_security_group_id]
-#   manage_master_user_password = false
-#   master_password             = var.rds_credentials.password
-#   master_username             = var.rds_credentials.username
-#   database_name               = var.rds_default_db_name
-
-#   instances = {
-#     one = {
-#       identifier     = "${var.project_name}-db-aurora-one"
-#       instance_class = var.rds_instance_class
-#     }
-#   }
-
-#   min_acu = 0
-#   max_acu = 0.5
-
-# }
-
 module "db" {
   source = "terraform-aws-modules/rds/aws"
 
