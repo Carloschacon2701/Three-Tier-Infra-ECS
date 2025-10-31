@@ -213,7 +213,7 @@ variable "amplify_app_repository" {
   }
 
   validation {
-    condition     = !var.create_amplify_app ? true : length(regexall("^[a-zA-Z0-9_.-]+$", var.amplify_app_repository.repository)) > 0
+    condition     = !var.create_amplify_app ? true : length(var.amplify_app_repository.repository) > 0
     error_message = "The amplify_app_repository must be a valid repository name."
   }
 
