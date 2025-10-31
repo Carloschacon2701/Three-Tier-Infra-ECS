@@ -46,12 +46,19 @@ module "ecs" {
     backend_api = {
       cpu                = 1024
       memory             = 2048
-      desired_count      = 1
+      desired_count      = var.ecs_service_desired_count
       launch_type        = "FARGATE"
       iam_role_arn       = data.aws_iam_role.ecs_task_execution_role.arn
       subnet_ids         = module.vpc.app_subnets_ids
       assign_public_ip   = false
       security_group_ids = [module.vpc.app_security_group_id]
+
+      placement_strategy = [
+        {
+          type  = "spread"
+          field = "attribute:ecs.availability-zone"
+        }
+      ]
 
       container_definitions = {
         api = {

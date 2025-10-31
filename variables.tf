@@ -29,6 +29,20 @@ variable "env_variables" {
 }
 
 #####################################
+# ECS SERVICE DESIRED COUNT
+#####################################
+variable "ecs_service_desired_count" {
+  description = "Desired number of ECS tasks to run. Set to at least 2 for multi-AZ deployment."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.ecs_service_desired_count >= 1
+    error_message = "The ecs_service_desired_count must be at least 1."
+  }
+}
+
+#####################################
 # IAM ROLES
 #####################################
 variable "task_exec_iam_role_name" {
